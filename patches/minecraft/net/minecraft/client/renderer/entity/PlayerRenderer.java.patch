@@ -1,6 +1,6 @@
 --- a/net/minecraft/client/renderer/entity/PlayerRenderer.java
 +++ b/net/minecraft/client/renderer/entity/PlayerRenderer.java
-@@ -60,7 +60,9 @@
+@@ -60,11 +60,13 @@
  
     public void func_225623_a_(AbstractClientPlayerEntity p_225623_1_, float p_225623_2_, float p_225623_3_, MatrixStack p_225623_4_, IRenderTypeBuffer p_225623_5_, int p_225623_6_) {
        this.func_177137_d(p_225623_1_);
@@ -10,3 +10,17 @@
     }
  
     public Vector3d func_225627_b_(AbstractClientPlayerEntity p_225627_1_, float p_225627_2_) {
+-      return p_225627_1_.func_213453_ef() ? new Vector3d(0.0D, -0.125D, 0.0D) : super.func_225627_b_(p_225627_1_, p_225627_2_);
++      return p_225627_1_.func_213453_ef() && !p_225627_1_.func_184218_aH() ? new Vector3d(0.0D, -0.125D, 0.0D) : super.func_225627_b_(p_225627_1_, p_225627_2_);
+    }
+ 
+    private void func_177137_d(AbstractClientPlayerEntity p_177137_1_) {
+@@ -81,7 +83,7 @@
+          playermodel.field_178731_d.field_78806_j = p_177137_1_.func_175148_a(PlayerModelPart.RIGHT_PANTS_LEG);
+          playermodel.field_178734_a.field_78806_j = p_177137_1_.func_175148_a(PlayerModelPart.LEFT_SLEEVE);
+          playermodel.field_178732_b.field_78806_j = p_177137_1_.func_175148_a(PlayerModelPart.RIGHT_SLEEVE);
+-         playermodel.field_228270_o_ = p_177137_1_.func_213453_ef();
++         playermodel.field_228270_o_ = p_177137_1_.func_213453_ef() && !p_177137_1_.func_184218_aH();
+          BipedModel.ArmPose bipedmodel$armpose = func_241741_a_(p_177137_1_, Hand.MAIN_HAND);
+          BipedModel.ArmPose bipedmodel$armpose1 = func_241741_a_(p_177137_1_, Hand.OFF_HAND);
+          if (bipedmodel$armpose.func_241657_a_()) {

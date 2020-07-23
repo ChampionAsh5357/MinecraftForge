@@ -51,6 +51,24 @@
     }
  
     public boolean func_226563_dT_() {
+@@ -343,7 +348,7 @@
+             pose = Pose.SWIMMING;
+          } else if (this.func_204805_cN()) {
+             pose = Pose.SPIN_ATTACK;
+-         } else if (this.func_225608_bj_() && !this.field_71075_bZ.field_75100_b) {
++         } else if (this.func_225608_bj_() && !this.func_184218_aH() && !this.field_71075_bZ.field_75100_b) {
+             pose = Pose.CROUCHING;
+          } else {
+             pose = Pose.STANDING;
+@@ -431,7 +436,7 @@
+    }
+ 
+    public void func_70098_U() {
+-      if (this.func_226564_dU_() && this.func_184218_aH()) {
++      if (this.func_226564_dU_() && this.func_184218_aH() && net.minecraftforge.event.ForgeEventFactory.canMountEntity(this, this.func_184187_bx(), false)) {
+          this.func_184210_p();
+          this.func_226284_e_(false);
+       } else {
 @@ -550,6 +555,7 @@
     }
  
