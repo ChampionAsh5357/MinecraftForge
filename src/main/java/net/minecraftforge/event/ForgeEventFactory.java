@@ -62,6 +62,7 @@ import net.minecraft.util.ActionResultType;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.NonNullList;
+import net.minecraft.util.RegistryKey;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
@@ -87,6 +88,7 @@ import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderBlockOverlayEvent;
 import net.minecraftforge.client.event.RenderBlockOverlayEvent.OverlayType;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.ToolType;
 import net.minecraftforge.common.capabilities.CapabilityDispatcher;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.BlockSnapshot;
@@ -125,6 +127,7 @@ import net.minecraftforge.event.entity.player.SleepingTimeCheckEvent;
 import net.minecraftforge.event.entity.player.UseHoeEvent;
 import net.minecraftforge.event.furnace.FurnaceFuelBurnTimeEvent;
 import net.minecraftforge.event.world.BlockEvent;
+import net.minecraftforge.event.world.BlockEvent.BlockToolInteractEvent;
 import net.minecraftforge.event.world.BlockEvent.CreateFluidSourceEvent;
 import net.minecraftforge.event.world.BlockEvent.EntityMultiPlaceEvent;
 import net.minecraftforge.event.world.BlockEvent.EntityPlaceEvent;
@@ -244,7 +247,7 @@ public class ForgeEventFactory
         return maxCanSpawnEvent.getResult() == Result.ALLOW ? maxCanSpawnEvent.getMaxPackSize() : entity.getMaxSpawnedInChunk();
     }
 
-    public static String getPlayerDisplayName(PlayerEntity player, String username)
+    public static ITextComponent getPlayerDisplayName(PlayerEntity player, ITextComponent username)
     {
         PlayerEvent.NameFormat event = new PlayerEvent.NameFormat(player, username);
         MinecraftForge.EVENT_BUS.post(event);
@@ -347,6 +350,8 @@ public class ForgeEventFactory
         return MinecraftForge.EVENT_BUS.post(event) ? "" : event.getMessage();
     }
 
+    //TODO: 1.17 Remove
+    @Deprecated
     public static int onHoeUse(ItemUseContext context)
     {
         UseHoeEvent event = new UseHoeEvent(context);
@@ -357,6 +362,13 @@ public class ForgeEventFactory
             return 1;
         }
         return 0;
+    }
+    
+    @Nullable
+    public static BlockState onToolUse(BlockState originalState, World world, BlockPos pos, PlayerEntity player, ItemStack stack, ToolType toolType)
+    {
+        BlockToolInteractEvent event = new BlockToolInteractEvent(world, pos, originalState, player, stack, toolType);
+        return MinecraftForge.EVENT_BUS.post(event) ? null : event.getFinalState();
     }
 
     public static int onApplyBonemeal(@Nonnull PlayerEntity player, @Nonnull World world, @Nonnull BlockPos pos, @Nonnull BlockState state, @Nonnull ItemStack stack)
@@ -459,8 +471,9 @@ public class ForgeEventFactory
         MinecraftForge.EVENT_BUS.post(new PlayerFlyableFallEvent(player, distance, multiplier));
     }
 
-    public static boolean onPlayerSpawnSet(PlayerEntity player, BlockPos pos, boolean forced) {
-        return MinecraftForge.EVENT_BUS.post(new PlayerSetSpawnEvent(player, pos, forced));
+    public static boolean onPlayerSpawnSet(PlayerEntity player, RegistryKey<World> world, BlockPos pos, boolean forced)
+    {
+        return MinecraftForge.EVENT_BUS.post(new PlayerSetSpawnEvent(player, world, pos, forced));
     }
 
     public static void onPlayerClone(PlayerEntity player, PlayerEntity oldPlayer, boolean wasDeath)

@@ -257,6 +257,15 @@
           return false;
        } else {
           if (p_225503_1_ >= 2.0F) {
+@@ -1434,7 +1467,7 @@
+    public boolean func_226566_ei_() {
+       if (!this.field_70122_E && !this.func_184613_cA() && !this.func_70090_H() && !this.func_70644_a(Effects.field_188424_y)) {
+          ItemStack itemstack = this.func_184582_a(EquipmentSlotType.CHEST);
+-         if (itemstack.func_77973_b() == Items.field_185160_cR && ElytraItem.func_185069_d(itemstack)) {
++         if (itemstack.canElytraFly(this)) {
+             this.func_226567_ej_();
+             return true;
+          }
 @@ -1475,6 +1508,10 @@
     }
  
@@ -288,19 +297,20 @@
        this.field_71068_ca += p_82242_1_;
        if (this.field_71068_ca < 0) {
           this.field_71068_ca = 0;
-@@ -1704,7 +1745,10 @@
+@@ -1704,7 +1745,11 @@
     }
  
     public ITextComponent func_145748_c_() {
 -      IFormattableTextComponent iformattabletextcomponent = ScorePlayerTeam.func_237500_a_(this.func_96124_cp(), this.func_200200_C_());
++      if (this.displayname == null) this.displayname = net.minecraftforge.event.ForgeEventFactory.getPlayerDisplayName(this, this.func_200200_C_());
 +      IFormattableTextComponent iformattabletextcomponent = new StringTextComponent("");
 +      iformattabletextcomponent = prefixes.stream().reduce(iformattabletextcomponent, IFormattableTextComponent::func_230529_a_);
-+      iformattabletextcomponent = iformattabletextcomponent.func_230529_a_(ScorePlayerTeam.func_237500_a_(this.func_96124_cp(), this.func_200200_C_()));
++      iformattabletextcomponent = iformattabletextcomponent.func_230529_a_(ScorePlayerTeam.func_237500_a_(this.func_96124_cp(), this.displayname));
 +      iformattabletextcomponent = suffixes.stream().reduce(iformattabletextcomponent, IFormattableTextComponent::func_230529_a_);
        return this.func_208016_c(iformattabletextcomponent);
     }
  
-@@ -1956,4 +2000,37 @@
+@@ -1956,4 +2001,45 @@
           return this.field_221260_g;
        }
     }
@@ -312,6 +322,14 @@
 +
 +   public Collection<IFormattableTextComponent> getSuffixes() {
 +       return this.suffixes;
++   }
++   
++   private ITextComponent displayname = null;
++   /**
++    * Force the displayed name to refresh, by firing {@link net.minecraftforge.event.entity.player.PlayerEvent.NameFormat}, using the real player name as event parameter.
++    */
++   public void refreshDisplayName() {
++      this.displayname = net.minecraftforge.event.ForgeEventFactory.getPlayerDisplayName(this, this.func_200200_C_());
 +   }
 +
 +   private final net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandler>
