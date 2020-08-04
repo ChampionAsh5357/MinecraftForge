@@ -46,15 +46,7 @@
        }
  
        if (flag1) {
-@@ -799,6 +807,7 @@
- 
-    public void func_70098_U() {
-       super.func_70098_U();
-+      if (this.func_226564_dU_() && this.func_184218_aH()) this.field_71158_b.field_228350_h_ = false;
-       this.field_184844_co = false;
-       if (this.func_184187_bx() instanceof BoatEntity) {
-          BoatEntity boatentity = (BoatEntity)this.func_184187_bx();
-@@ -985,4 +994,16 @@
+@@ -985,4 +993,16 @@
           return this.field_204230_bP;
        }
     }
