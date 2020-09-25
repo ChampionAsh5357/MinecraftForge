@@ -1,0 +1,50 @@
+{
+  "parent": "data_gen_test:test/test_one",
+  "display": {
+    "icon": {
+      "item": "minecraft:acacia_fence_gate"
+    },
+    "title": {
+      "text": "Test 2"
+    },
+    "description": {
+      "text": "Test the basic information of the advancement provider."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "test_things": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "item": "minecraft:acacia_slab"
+          }
+        ]
+      }
+    },
+    "even_more": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": [
+          {
+            "condition": "minecraft:entity_properties",
+            "predicate": {
+              "type": "minecraft:bee"
+            },
+            "entity": "this"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "test_things",
+      "even_more"
+    ]
+  ]
+}

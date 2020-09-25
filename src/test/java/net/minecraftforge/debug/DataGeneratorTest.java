@@ -28,11 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import net.minecraft.block.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jline.utils.InputStreamReader;
@@ -48,12 +48,30 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.Advancement.Builder;
 import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.advancements.FrameType;
+import net.minecraft.advancements.IRequirementsStrategy;
+import net.minecraft.advancements.criterion.EntityPredicate;
+import net.minecraft.advancements.criterion.InventoryChangeTrigger;
+import net.minecraft.advancements.criterion.KilledTrigger;
+import net.minecraft.block.BarrelBlock;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.DoorBlock;
+import net.minecraft.block.FenceBlock;
+import net.minecraft.block.FenceGateBlock;
+import net.minecraft.block.FurnaceBlock;
+import net.minecraft.block.PaneBlock;
+import net.minecraft.block.RotatedPillarBlock;
+import net.minecraft.block.SlabBlock;
+import net.minecraft.block.StairsBlock;
+import net.minecraft.block.TrapDoorBlock;
+import net.minecraft.block.WallBlock;
+import net.minecraft.client.renderer.model.BlockModel.GuiLight;
 import net.minecraft.client.renderer.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.model.ItemTransformVec3f;
 import net.minecraft.client.renderer.model.Variant;
-import net.minecraft.client.renderer.model.BlockModel.GuiLight;
 import net.minecraft.data.BlockTagsProvider;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DirectoryCache;
@@ -82,6 +100,7 @@ import net.minecraftforge.client.model.generators.VariantBlockStateBuilder;
 import net.minecraftforge.common.crafting.ConditionalAdvancement;
 import net.minecraftforge.common.crafting.ConditionalRecipe;
 import net.minecraftforge.common.crafting.conditions.IConditionBuilder;
+import net.minecraftforge.common.data.AdvancementProvider;
 import net.minecraftforge.common.data.ExistingFileHelper;
 import net.minecraftforge.common.data.LanguageProvider;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -121,6 +140,7 @@ public class DataGeneratorTest
         {
             gen.addProvider(new Recipes(gen));
             gen.addProvider(new Tags(gen, event.getExistingFileHelper()));
+            gen.addProvider(new Advancements(gen, event.getExistingFileHelper()));
         }
     }
 
@@ -175,6 +195,21 @@ public class DataGeneratorTest
                 )
             )
             .build(consumer, ID);
+        }
+    }
+
+    public static class Advancements extends AdvancementProvider
+    {
+        public Advancements(DataGenerator gen, ExistingFileHelper existingFileHelper)
+        {
+            super(gen, existingFileHelper);
+        }
+
+		@Override
+        protected void registerAdvancements(BiConsumer<Builder, ResourceLocation> consumer)
+        {
+            Advancement test1 = AdvancementBuilder.builder().withParentId(new ResourceLocation("end/kill_dragon")).withDisplay(Blocks.ACACIA_BUTTON, new StringTextComponent("Test 1"), new StringTextComponent("Test the basic information of the advancement provider."), (ResourceLocation)null, FrameType.TASK, true, true, false).withCriterion("test_things", InventoryChangeTrigger.Instance.forItems(Items.ACACIA_BUTTON)).withCriterion("even_more", KilledTrigger.Instance.playerKilledEntity(EntityPredicate.Builder.create().type(EntityType.BEE))).register(consumer, new ResourceLocation(MODID, "test/test_one"));
+            AdvancementBuilder.builder().withParent(test1).withDisplay(Blocks.ACACIA_FENCE_GATE, new StringTextComponent("Test 2"), new StringTextComponent("Test the basic information of the advancement provider."), (ResourceLocation)null, FrameType.TASK, true, true, false).withCriterion("test_things", InventoryChangeTrigger.Instance.forItems(Items.ACACIA_SLAB)).withCriterion("even_more", KilledTrigger.Instance.playerKilledEntity(EntityPredicate.Builder.create().type(EntityType.BEE))).withRequirementsStrategy(IRequirementsStrategy.OR).register(consumer, new ResourceLocation(MODID, "test/test_two"));
         }
     }
 
