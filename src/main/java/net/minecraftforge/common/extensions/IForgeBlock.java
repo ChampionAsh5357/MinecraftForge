@@ -19,11 +19,8 @@
 
 package net.minecraftforge.common.extensions;
 
-import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
-
 import javax.annotation.Nullable;
 
 import net.minecraft.block.*;
@@ -43,17 +40,13 @@ import net.minecraft.entity.projectile.WitherSkullEntity;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.potion.Effects;
 import net.minecraft.item.AxeItem;
-import net.minecraft.item.DyeColor;
 import net.minecraft.item.HoeItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ShovelItem;
 import net.minecraft.pathfinding.PathNodeType;
-import net.minecraft.state.Property;
-import net.minecraft.state.properties.BedPart;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
-import net.minecraft.util.Hand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Rotation;
 import net.minecraft.util.math.BlockPos;
@@ -242,14 +235,15 @@ public interface IForgeBlock
      * @param state The current state
      * @param world The current world
      * @param pos Block position in world
+     * @param orientation The direction the entity is facing while getting into bed.
      * @param sleeper The sleeper or camera entity, null in some cases.
      * @return The spawn position
      */
-    default Optional<Vector3d> getBedSpawnPosition(EntityType<?> entityType, BlockState state, IWorldReader world, BlockPos pos, @Nullable LivingEntity sleeper)
+    default Optional<Vector3d> getBedSpawnPosition(EntityType<?> entityType, BlockState state, IWorldReader world, BlockPos pos, float orientation, @Nullable LivingEntity sleeper)
     {
         if (world instanceof World)
         {
-            return BedBlock.func_220172_a(entityType, world,pos,0);
+            return BedBlock.func_242652_a(entityType, world, pos, orientation);
         }
 
         return Optional.empty();
@@ -516,7 +510,7 @@ public interface IForgeBlock
      * @param pos Block position in world
      * @return True, to support being part of a nether portal frame, false otherwise.
      */
-    default boolean isPortalFrame(BlockState state, IWorldReader world, BlockPos pos)
+    default boolean isPortalFrame(BlockState state, IBlockReader world, BlockPos pos)
     {
         return state.isIn(Blocks.OBSIDIAN);
     }
@@ -890,7 +884,7 @@ public interface IForgeBlock
     {
         return state.getBlock() instanceof BreakableBlock || state.getBlock() instanceof LeavesBlock;
     }
-    
+
     /**
      * Returns the state that this block should transform into when right clicked by a tool.
      * For example: Used to determine if an axe can strip, a shovel can path, or a hoe can till.
@@ -909,5 +903,19 @@ public interface IForgeBlock
         if (toolType == ToolType.AXE) return AxeItem.getAxeStrippingState(state);
         else if(toolType == ToolType.HOE) return HoeItem.getHoeTillingState(state);
         else return toolType == ToolType.SHOVEL ? ShovelItem.getShovelPathingState(state) : null;
+    }
+
+    /**
+     * Checks if a player or entity handles movement on this block like scaffolding.
+     *
+     * @param state The current state
+     * @param world The current world
+     * @param pos The block position in world
+     * @param entity The entity on the scaffolding
+     * @return True if the block should act like scaffolding
+     */
+    default boolean isScaffolding(BlockState state, IWorldReader world, BlockPos pos, LivingEntity entity)
+    {
+        return state.isIn(Blocks.SCAFFOLDING);
     }
 }

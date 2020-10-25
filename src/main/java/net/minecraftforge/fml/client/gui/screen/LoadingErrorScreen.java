@@ -25,6 +25,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.screen.ErrorScreen;
 import net.minecraft.client.gui.widget.list.ExtendedList;
+import net.minecraft.util.IReorderingProcessor;
 import net.minecraft.util.Util;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.ITextProperties;
@@ -40,6 +41,7 @@ import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -52,17 +54,19 @@ public class LoadingErrorScreen extends ErrorScreen {
     private final Path logFile;
     private final List<ModLoadingException> modLoadErrors;
     private final List<ModLoadingWarning> modLoadWarnings;
+    private final Path dumpedLocation;
     private LoadingEntryList entryList;
     private ITextComponent errorHeader;
     private ITextComponent warningHeader;
 
-    public LoadingErrorScreen(LoadingFailedException loadingException, List<ModLoadingWarning> warnings)
+    public LoadingErrorScreen(LoadingFailedException loadingException, List<ModLoadingWarning> warnings, final File dumpedLocation)
     {
         super(new StringTextComponent("Loading Error"), null);
         this.modLoadWarnings = warnings;
         this.modLoadErrors = loadingException == null ? Collections.emptyList() : loadingException.getErrors();
         this.modsDir = FMLPaths.MODSDIR.get();
         this.logFile = FMLPaths.GAMEDIR.get().resolve(Paths.get("logs","latest.log"));
+        this.dumpedLocation = dumpedLocation != null ? dumpedLocation.toPath() : null;
     }
 
     @Override
@@ -75,7 +79,7 @@ public class LoadingErrorScreen extends ErrorScreen {
         this.errorHeader = new StringTextComponent(TextFormatting.RED + ForgeI18n.parseMessage("fml.loadingerrorscreen.errorheader", this.modLoadErrors.size()) + TextFormatting.RESET);
         this.warningHeader = new StringTextComponent(TextFormatting.YELLOW + ForgeI18n.parseMessage("fml.loadingerrorscreen.warningheader", this.modLoadErrors.size()) + TextFormatting.RESET);
 
-        int yOffset = this.modLoadErrors.isEmpty() ? 46 : 38;
+        int yOffset = 46;
         this.func_230480_a_(new ExtendedButton(50, this.field_230709_l_ - yOffset, this.field_230708_k_ / 2 - 55, 20, new StringTextComponent(ForgeI18n.parseMessage("fml.button.open.mods.folder")), b -> Util.getOSType().openFile(modsDir.toFile())));
         this.func_230480_a_(new ExtendedButton(this.field_230708_k_ / 2 + 5, this.field_230709_l_ - yOffset, this.field_230708_k_ / 2 - 55, 20, new StringTextComponent(ForgeI18n.parseMessage("fml.button.open.file", logFile.getFileName())), b -> Util.getOSType().openFile(logFile.toFile())));
         if (this.modLoadErrors.isEmpty()) {
@@ -83,6 +87,8 @@ public class LoadingErrorScreen extends ErrorScreen {
                 ClientHooks.logMissingTextureErrors();
                 this.field_230706_i_.displayGuiScreen(null);
             }));
+        } else {
+            this.func_230480_a_(new ExtendedButton(this.field_230708_k_ / 4, this.field_230709_l_ - 24, this.field_230708_k_ / 2, 20, new StringTextComponent(ForgeI18n.parseMessage("fml.button.open.file", dumpedLocation.getFileName())), b -> Util.getOSType().openFile(dumpedLocation.toFile())));
         }
 
         this.entryList = new LoadingEntryList(this, this.modLoadErrors, this.modLoadWarnings);
@@ -100,8 +106,8 @@ public class LoadingErrorScreen extends ErrorScreen {
     }
 
     private void drawMultiLineCenteredString(MatrixStack mStack, FontRenderer fr, ITextComponent str, int x, int y) {
-        for (ITextProperties s : fr.func_238425_b_(str, this.field_230708_k_)) {
-            fr.func_238407_a_(mStack, s, (float) (x - fr.func_238414_a_(s) / 2.0), y, 0xFFFFFF);
+        for (IReorderingProcessor s : fr.func_238425_b_(str, this.field_230708_k_)) {
+            fr.func_238407_a_(mStack, s, (float) (x - fr.func_243245_a(s) / 2.0), y, 0xFFFFFF);
             y+=fr.FONT_HEIGHT;
         }
     }
@@ -148,11 +154,11 @@ public class LoadingErrorScreen extends ErrorScreen {
             @Override
             public void func_230432_a_(MatrixStack mStack, int entryIdx, int top, int left, final int entryWidth, final int entryHeight, final int mouseX, final int mouseY, final boolean p_194999_5_, final float partialTicks) {
                 FontRenderer font = Minecraft.getInstance().fontRenderer;
-                final List<ITextProperties> strings = font.func_238425_b_(message, LoadingEntryList.this.field_230670_d_);
+                final List<IReorderingProcessor> strings = font.func_238425_b_(message, LoadingEntryList.this.field_230670_d_);
                 int y = top + 2;
                 for (int i = 0; i < Math.min(strings.size(), 2); i++) {
                     if (center)
-                        font.func_238422_b_(mStack, strings.get(i), left + (field_230670_d_) - font.func_238414_a_(strings.get(i)) / 2F, y, 0xFFFFFF);
+                        font.func_238422_b_(mStack, strings.get(i), left + (field_230670_d_) - font.func_243245_a(strings.get(i)) / 2F, y, 0xFFFFFF);
                     else
                         font.func_238422_b_(mStack, strings.get(i), left + 5, y, 0xFFFFFF);
                     y += font.FONT_HEIGHT;
