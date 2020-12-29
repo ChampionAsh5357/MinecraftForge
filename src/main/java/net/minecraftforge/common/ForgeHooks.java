@@ -33,6 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
@@ -43,10 +44,15 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.ai.attributes.Attribute;
+import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.fluid.*;
+import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.loot.LootContext;
 import net.minecraft.loot.LootTable;
 import net.minecraft.loot.LootTableManager;
@@ -91,6 +97,8 @@ import net.minecraft.potion.PotionUtils;
 import net.minecraft.stats.Stats;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.*;
+import net.minecraft.world.chunk.IChunk;
+import net.minecraft.world.gen.feature.structure.Structure;
 import net.minecraft.world.spawner.AbstractSpawner;
 import net.minecraft.tileentity.FurnaceTileEntity;
 import net.minecraft.tileentity.TileEntity;
@@ -116,10 +124,12 @@ import net.minecraftforge.common.loot.IGlobalLootModifier;
 import net.minecraftforge.common.loot.LootModifierManager;
 import net.minecraftforge.common.util.BlockSnapshot;
 import net.minecraftforge.common.world.BiomeGenerationSettingsBuilder;
+import net.minecraftforge.common.world.ForgeWorldType;
 import net.minecraftforge.common.world.MobSpawnInfoBuilder;
 import net.minecraftforge.event.AnvilUpdateEvent;
 import net.minecraftforge.event.DifficultyChangeEvent;
 import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraftforge.event.ItemAttributeModifierEvent;
 import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
@@ -176,8 +186,8 @@ public class ForgeHooks
     public static boolean canHarvestBlock(@Nonnull BlockState state, @Nonnull PlayerEntity player, @Nonnull IBlockReader world, @Nonnull BlockPos pos)
     {
         //state = state.getActualState(world, pos);
-        if (!state.func_235783_q_())
-            return true;
+        if (!state.getRequiresTool())
+            return ForgeEventFactory.doPlayerHarvestCheck(player, state, true);
 
         ItemStack stack = player.getHeldItemMainhand();
         ToolType tool = state.getHarvestTool();
@@ -225,7 +235,7 @@ public class ForgeHooks
         blocks.forEach(block -> blockToolSetter.accept(block, ToolType.HOE, 0));
 
         //This is taken from PickaxeItem, if that changes update here.
-        for (Block block : new Block[]{Blocks.OBSIDIAN, Blocks.field_235399_ni_, Blocks.field_235397_ng_, Blocks.field_235400_nj_, Blocks.field_235398_nh_})
+        for (Block block : new Block[]{Blocks.OBSIDIAN, Blocks.CRYING_OBSIDIAN, Blocks.NETHERITE_BLOCK, Blocks.RESPAWN_ANCHOR, Blocks.ANCIENT_DEBRIS})
             blockToolSetter.accept(block, ToolType.PICKAXE, 3);
         for (Block block : new Block[]{Blocks.DIAMOND_BLOCK, Blocks.DIAMOND_ORE, Blocks.EMERALD_ORE, Blocks.EMERALD_BLOCK, Blocks.GOLD_BLOCK, Blocks.GOLD_ORE, Blocks.REDSTONE_ORE})
             blockToolSetter.accept(block, ToolType.PICKAXE, 2);
@@ -251,7 +261,7 @@ public class ForgeHooks
             if (state.isAir(world, pos))
                 return false;
 
-            if (isCreative && Screen.func_231172_r_() && state.hasTileEntity())
+            if (isCreative && Screen.hasControlDown() && state.hasTileEntity())
                 te = world.getTileEntity(pos);
 
             result = state.getPickBlock(target, world, pos, player);
@@ -479,7 +489,7 @@ public class ForgeHooks
                 if (ichat == null)
                     ichat = new StringTextComponent(part);
                 else
-                    ichat.func_240702_b_(part);
+                    ichat.appendString(part);
             }
             lastEnd = end;
             String url = string.substring(start, end);
@@ -495,7 +505,7 @@ public class ForgeHooks
                         if (ichat == null)
                             ichat = new StringTextComponent(url);
                         else
-                            ichat.func_240702_b_(url);
+                            ichat.appendString(url);
                         continue;
                     }
                     url = "http://" + url;
@@ -505,16 +515,16 @@ public class ForgeHooks
             {
                 // Bad syntax bail out!
                 if (ichat == null) ichat = new StringTextComponent(url);
-                else ichat.func_240702_b_(url);
+                else ichat.appendString(url);
                 continue;
             }
 
             // Set the click event and append the link.
             ClickEvent click = new ClickEvent(ClickEvent.Action.OPEN_URL, url);
-            link.func_230530_a_(link.getStyle().func_240715_a_(click).setUnderlined(true).func_240718_a_(Color.func_240744_a_(TextFormatting.BLUE)));
+            link.setStyle(link.getStyle().setClickEvent(click).setUnderlined(true).setColor(Color.fromTextFormatting(TextFormatting.BLUE)));
             if (ichat == null)
                 ichat = new StringTextComponent("");
-            ichat.func_230529_a_(link);
+            ichat.append(link);
         }
 
         // Append the rest of the message.
@@ -522,7 +532,7 @@ public class ForgeHooks
         if (ichat == null)
             ichat = new StringTextComponent(end);
         else if (end.length() > 0)
-            ichat.func_230529_a_(new StringTextComponent(string.substring(lastEnd)));
+            ichat.append(new StringTextComponent(string.substring(lastEnd)));
         return ichat;
     }
 
@@ -664,7 +674,8 @@ public class ForgeHooks
 
                     world.markAndNotifyBlock(snap.getPos(), world.getChunkAt(snap.getPos()), oldBlock, newBlock, updateFlag, 512);
                 }
-                player.addStat(Stats.ITEM_USED.get(item));
+                if (player != null)
+                    player.addStat(Stats.ITEM_USED.get(item));
             }
         }
         world.capturedBlockSnapshots.clear();
@@ -672,9 +683,15 @@ public class ForgeHooks
         return ret;
     }
 
+    @Deprecated // TODO: Remove 1.17 - Use player-contextual version below.
     public static boolean onAnvilChange(RepairContainer container, @Nonnull ItemStack left, @Nonnull ItemStack right, IInventory outputSlot, String name, int baseCost)
     {
-        AnvilUpdateEvent e = new AnvilUpdateEvent(left, right, name, baseCost);
+        return onAnvilChange(container, left, right, outputSlot, name, baseCost, null);
+    }
+
+    public static boolean onAnvilChange(RepairContainer container, @Nonnull ItemStack left, @Nonnull ItemStack right, IInventory outputSlot, String name, int baseCost, PlayerEntity player)
+    {
+        AnvilUpdateEvent e = new AnvilUpdateEvent(left, right, name, baseCost, player);
         if (MinecraftForge.EVENT_BUS.post(e)) return false;
         if (e.getOutput().isEmpty()) return true;
 
@@ -772,9 +789,17 @@ public class ForgeHooks
         return evt;
     }
 
+    @Deprecated //Use RayTraceResult version.  TODO: Remove 1.17
     public static PlayerInteractEvent.RightClickBlock onRightClickBlock(PlayerEntity player, Hand hand, BlockPos pos, Direction face)
     {
         PlayerInteractEvent.RightClickBlock evt = new PlayerInteractEvent.RightClickBlock(player, hand, pos, face);
+        MinecraftForge.EVENT_BUS.post(evt);
+        return evt;
+    }
+
+    public static PlayerInteractEvent.RightClickBlock onRightClickBlock(PlayerEntity player, Hand hand, BlockPos pos, BlockRayTraceResult hitVec)
+    {
+        PlayerInteractEvent.RightClickBlock evt = new PlayerInteractEvent.RightClickBlock(player, hand, pos, hitVec);
         MinecraftForge.EVENT_BUS.post(evt);
         return evt;
     }
@@ -869,19 +894,27 @@ public class ForgeHooks
         throw new RuntimeException("Mod fluids must override createAttributes.");
     }
 
+    public static String getDefaultWorldType()
+    {
+        ForgeWorldType def = ForgeWorldType.getDefaultWorldType();
+        if (def != null)
+            return def.getRegistryName().toString();
+        return "default";
+    }
+
     @FunctionalInterface
     public interface BiomeCallbackFunction
     {
         Biome apply(final Biome.Climate climate, final Biome.Category category, final Float depth, final Float scale, final BiomeAmbience effects, final BiomeGenerationSettings gen, final MobSpawnInfo spawns);
     }
 
-    public static Biome enhanceBiome(final ResourceLocation name, final Biome.Climate climate, final Biome.Category category, final Float depth, final Float scale, final BiomeAmbience effects, final BiomeGenerationSettings gen, final MobSpawnInfo spawns, final RecordCodecBuilder.Instance<Biome> codec, final BiomeCallbackFunction callback)
+    public static Biome enhanceBiome(@Nullable final ResourceLocation name, final Biome.Climate climate, final Biome.Category category, final Float depth, final Float scale, final BiomeAmbience effects, final BiomeGenerationSettings gen, final MobSpawnInfo spawns, final RecordCodecBuilder.Instance<Biome> codec, final BiomeCallbackFunction callback)
     {
         BiomeGenerationSettingsBuilder genBuilder = new BiomeGenerationSettingsBuilder(gen);
         MobSpawnInfoBuilder spawnBuilder = new MobSpawnInfoBuilder(spawns);
         BiomeLoadingEvent event = new BiomeLoadingEvent(name, climate, category, depth, scale, effects, genBuilder, spawnBuilder);
         MinecraftForge.EVENT_BUS.post(event);
-        return callback.apply(event.getClimate(), event.getCategory(), event.getDepth(), event.getScale(), event.getEffects(), event.getGeneration().func_242508_a(), event.getSpawns().func_242577_b());
+        return callback.apply(event.getClimate(), event.getCategory(), event.getDepth(), event.getScale(), event.getEffects(), event.getGeneration().build(), event.getSpawns().copy()).setRegistryName(name);
     }
 
     private static class LootTableContext
@@ -996,6 +1029,16 @@ public class ForgeHooks
     public static void onAdvancement(ServerPlayerEntity player, Advancement advancement)
     {
         MinecraftForge.EVENT_BUS.post(new AdvancementEvent(player, advancement));
+    }
+
+    /**
+     * Hook to fire {@link ItemAttributeModifierEvent}. Modders should use {@link ItemStack#getAttributeModifiers(EquipmentSlotType)} instead.
+     */
+    public static Multimap<Attribute,AttributeModifier> getAttributeModifiers(ItemStack stack, EquipmentSlotType equipmentSlot, Multimap<Attribute,AttributeModifier> attributes)
+    {
+        ItemAttributeModifierEvent event = new ItemAttributeModifierEvent(stack, equipmentSlot, attributes);
+        MinecraftForge.EVENT_BUS.post(event);
+        return event.getModifiers();
     }
 
     /**
@@ -1133,7 +1176,7 @@ public class ForgeHooks
                     dummy = new ITag.ItemEntry(new ResourceLocation(s));
                 else
                     dummy = new ITag.TagEntry(new ResourceLocation(s.substring(1)));
-                allList.removeIf(e -> e.func_232968_a_().equals(dummy));
+                allList.removeIf(e -> e.getEntry().equals(dummy));
             }
         }
     }
@@ -1225,5 +1268,19 @@ public class ForgeHooks
         List<String> modpacks = getModPacks();
         modpacks.add("vanilla");
         return modpacks;
+    }
+
+    /**
+     * Fixes MC-194811
+     * When a structure mod is removed, this map may contain null keys. This will make the world unable to save if this persists.
+     * If we remove a structure from the save data in this way, we then mark the chunk for saving
+     */
+    public static void fixNullStructureReferences(IChunk chunk, Map<Structure<?>, LongSet> structureReferences)
+    {
+        if (structureReferences.remove(null) != null)
+        {
+            chunk.setModified(true);
+        }
+        chunk.setStructureReferences(structureReferences);
     }
 }
